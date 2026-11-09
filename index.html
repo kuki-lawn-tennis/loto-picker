@@ -1,0 +1,312 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>ロット番号ピッカー</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: one column on phones; on wide screens the pick list sits left and the mark sheet right. */
+:root {
+  --bg: #F1F5F3;
+  --surface: #FFFFFF;
+  --ink: #13201B;
+  --ink-soft: #55655E;
+  --line: #D3DDD8;
+  --accent: #0B6B57;
+  --on-accent: #FFFFFF;
+  --accent-wash: #DDEEE8;
+  --font-body: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1613;
+    --surface: #16211D;
+    --ink: #E6EFEB;
+    --ink-soft: #93A59D;
+    --line: #2A3A34;
+    --accent: #5FD2B1;
+    --on-accent: #08231B;
+    --accent-wash: #1C3a31;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1613;
+  --surface: #16211D;
+  --ink: #E6EFEB;
+  --ink-soft: #93A59D;
+  --line: #2A3A34;
+  --accent: #5FD2B1;
+  --on-accent: #08231B;
+  --accent-wash: #1C3a31;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  padding-block: 28px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.app { max-width: 520px; margin-inline: auto; display: grid; gap: 20px; }
+header { display: grid; gap: 4px; }
+.eyebrow { font-family: var(--font-num); font-size: 12px; letter-spacing: 0.08em; color: var(--ink-soft); margin: 0; }
+h1 { font-size: 26px; line-height: 1.25; font-weight: 700; margin: 0; text-wrap: balance; }
+h2 { font-size: 13px; font-weight: 500; letter-spacing: 0.06em; color: var(--ink-soft); margin: 0 0 10px; }
+.controls { display: grid; gap: 12px; }
+.seg { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 8px; background: var(--surface); overflow: hidden; }
+.seg button { font: inherit; font-family: var(--font-num); font-size: 15px; min-height: 44px; border: 0; border-left: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; }
+.seg button:first-child { border-left: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.games { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.games legend { padding: 0; float: left; width: 100%; }
+.game { position: relative; display: block; min-width: 0; }
+.game input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.game span { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 56px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.game b { font-size: 16px; font-weight: 700; }
+.game small { font-family: var(--font-num); font-size: 12px; color: var(--ink-soft); }
+.game input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.game input:checked + span small { color: var(--on-accent); }
+.game input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg-label { font-size: 13px; color: var(--ink-soft); margin: 0 0 6px; }
+button { font-family: var(--font-body); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.primary { min-height: 48px; border: 0; border-radius: 8px; background: var(--accent); color: var(--on-accent); font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.primary:active { transform: scale(0.99); }
+.lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.line { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 6px; }
+.pick { display: grid; grid-template-columns: 24px minmax(0, 1fr); align-items: center; gap: 8px; min-height: 56px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); text-align: left; cursor: pointer; }
+.line[data-sel="true"] .pick { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.tag { font-family: var(--font-num); font-size: 13px; font-weight: 500; color: var(--ink-soft); }
+.line[data-sel="true"] .tag { color: var(--accent); }
+.nums { display: grid; grid-template-columns: repeat(var(--cols, 6), minmax(0, 1fr)); gap: 4px; }
+.n { font-family: var(--font-num); font-size: var(--nfs, 21px); font-weight: 500; text-align: center; font-variant-numeric: tabular-nums; }
+.fresh .n { animation: pop 320ms cubic-bezier(.2,.8,.3,1) both; animation-delay: calc(var(--i) * 45ms); }
+@keyframes pop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.copy { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink-soft); font-size: 18px; cursor: pointer; }
+.copy:hover { color: var(--accent); border-color: var(--accent); }
+.all { margin-top: 10px; min-height: 44px; width: 100%; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--ink); font-size: 14px; cursor: pointer; }
+.sheet-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+.sheet { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.cell { aspect-ratio: 1; max-width: 100%; display: flex; align-items: center; justify-content: center; font-family: var(--font-num); font-size: 13px; color: var(--ink-soft); border: 1px solid var(--line); border-radius: 6px; font-variant-numeric: tabular-nums; }
+.cell.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 500; }
+.status { min-height: 20px; margin: 0; font-size: 13px; color: var(--accent); }
+.note { margin: 0; font-size: 12px; color: var(--ink-soft); }
+@media (min-width: 860px) {
+  .app { max-width: 880px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; column-gap: 32px; }
+  header, .note, .status { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fresh .n { animation: none; }
+  .primary:active { transform: none; }
+}
+</style>
+
+<main class="app">
+  <header>
+    <p class="eyebrow">重複なし・昇順で表示</p>
+    <h1>ロット番号ピッカー</h1>
+  </header>
+
+  <fieldset class="games" id="games">
+    <legend class="seg-label">種類</legend>
+    <label class="game"><input type="radio" name="game" id="game-6" value="6" checked><span><b>ロット6</b><small>1–43 から 6 個</small></span></label>
+    <label class="game"><input type="radio" name="game" id="game-7" value="7"><span><b>ロット7</b><small>1–37 から 7 個</small></span></label>
+  </fieldset>
+
+  <section class="controls" aria-label="口数と抽選">
+    <div>
+      <p class="seg-label" id="seg-label">口数</p>
+      <div class="seg" role="group" aria-labelledby="seg-label" id="seg"></div>
+    </div>
+    <button class="primary" id="draw" type="button">選び直す</button>
+  </section>
+
+  <section aria-labelledby="lines-h">
+    <h2 id="lines-h">選ばれた番号</h2>
+    <ol class="lines" id="lines"></ol>
+    <button class="all" id="copy-all" type="button">すべてコピー</button>
+  </section>
+
+  <section aria-labelledby="sheet-h">
+    <h2 id="sheet-h">マークシート <span id="sheet-line">A</span> 口</h2>
+    <div class="sheet-wrap"><div class="sheet" id="sheet" role="img" aria-label="マークシート"></div></div>
+  </section>
+
+  <p class="status" id="status" role="status" aria-live="polite"></p>
+  <p class="note">端末の乱数で選んでいます。当せんを保証するものではありません。</p>
+</main>
+
+<script>
+var GAMES = { 6: { max: 43, pick: 6 }, 7: { max: 37, pick: 7 } };
+var MIN = 1, MAX = 43, PICK = 6, MAXLINES = 5;
+var LETTERS = ['A', 'B', 'C', 'D', 'E'];
+var rows = [], lineCount = 3, sel = 0;
+var statusTimer = null;
+
+function rnd(n) {
+  try {
+    var a = new Uint32Array(1);
+    var limit = Math.floor(4294967296 / n) * n;
+    do { crypto.getRandomValues(a); } while (a[0] >= limit);
+    return a[0] % n;
+  } catch (e) {
+    return Math.floor(Math.random() * n);
+  }
+}
+
+function drawOne() {
+  var pool = [];
+  for (var i = MIN; i <= MAX; i++) pool.push(i);
+  for (var j = pool.length - 1; j > 0; j--) {
+    var k = rnd(j + 1);
+    var t = pool[j]; pool[j] = pool[k]; pool[k] = t;
+  }
+  return pool.slice(0, PICK).sort(function (a, b) { return a - b; });
+}
+
+function pad(n) { return n < 10 ? '0' + n : String(n); }
+function fmt(r) { return r.map(pad).join(' '); }
+
+function say(msg) {
+  var el = document.getElementById('status');
+  el.textContent = msg;
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(function () { el.textContent = ''; }, 2200);
+}
+
+function copyText(text, okMsg) {
+  var fail = function () { say('コピーできませんでした。長押しで選択してください: ' + text.replace(/\n/g, ' / ')); };
+  try {
+    navigator.clipboard.writeText(text).then(function () { say(okMsg); }, fail);
+  } catch (e) { fail(); }
+}
+
+function renderLines(animate) {
+  var ol = document.getElementById('lines');
+  ol.style.setProperty('--cols', PICK);
+  ol.style.setProperty('--nfs', PICK === 7 ? '19px' : '21px');
+  ol.innerHTML = '';
+  rows.forEach(function (r, idx) {
+    var li = document.createElement('li');
+    li.className = 'line' + (animate === true || animate === idx ? ' fresh' : '');
+    li.setAttribute('data-sel', idx === sel ? 'true' : 'false');
+
+    var pick = document.createElement('button');
+    pick.type = 'button';
+    pick.className = 'pick';
+    pick.id = 'pick-' + idx;
+    pick.setAttribute('aria-label', LETTERS[idx] + ' 口 ' + fmt(r));
+    pick.setAttribute('aria-pressed', idx === sel ? 'true' : 'false');
+    var tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = LETTERS[idx];
+    var nums = document.createElement('span');
+    nums.className = 'nums';
+    r.forEach(function (n, i) {
+      var s = document.createElement('span');
+      s.className = 'n';
+      s.style.setProperty('--i', i);
+      s.textContent = pad(n);
+      nums.appendChild(s);
+    });
+    pick.appendChild(tag);
+    pick.appendChild(nums);
+    pick.addEventListener('click', function () { sel = idx; renderLines(false); renderSheet(); });
+
+    var cp = document.createElement('button');
+    cp.type = 'button';
+    cp.className = 'copy';
+    cp.id = 'copy-' + idx;
+    cp.setAttribute('aria-label', LETTERS[idx] + ' 口をコピー');
+    cp.textContent = 'コピー';
+    cp.style.fontSize = '12px';
+    cp.addEventListener('click', function () { copyText(fmt(r), LETTERS[idx] + ' 口をコピーしました'); });
+
+    li.appendChild(pick);
+    li.appendChild(cp);
+    ol.appendChild(li);
+  });
+}
+
+function renderSheet() {
+  var sheet = document.getElementById('sheet');
+  sheet.innerHTML = '';
+  var marked = rows[sel] || [];
+  for (var n = MIN; n <= MAX; n++) {
+    var c = document.createElement('div');
+    c.className = 'cell' + (marked.indexOf(n) !== -1 ? ' on' : '');
+    c.textContent = n;
+    sheet.appendChild(c);
+  }
+  document.getElementById('sheet-line').textContent = LETTERS[sel];
+  sheet.setAttribute('aria-label', 'マークシート ' + LETTERS[sel] + ' 口: ' + fmt(marked));
+}
+
+function renderSeg() {
+  var seg = document.getElementById('seg');
+  seg.innerHTML = '';
+  for (var i = 1; i <= MAXLINES; i++) {
+    (function (i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.id = 'seg-' + i;
+      b.textContent = i;
+      b.setAttribute('aria-pressed', i === lineCount ? 'true' : 'false');
+      b.setAttribute('aria-label', i + ' 口');
+      b.addEventListener('click', function () { setCount(i); });
+      seg.appendChild(b);
+    })(i);
+  }
+}
+
+function setCount(n) {
+  var before = rows.length;
+  lineCount = n;
+  while (rows.length < n) rows.push(drawOne());
+  rows.length = n;
+  if (sel >= n) sel = n - 1;
+  renderSeg();
+  renderLines(n > before ? before : false);
+  renderSheet();
+}
+
+function drawAll() {
+  rows = [];
+  for (var i = 0; i < lineCount; i++) rows.push(drawOne());
+  renderLines(true);
+  renderSheet();
+}
+
+function applyGame(key) {
+  var g = GAMES[key] || GAMES[6];
+  MAX = g.max;
+  PICK = g.pick;
+}
+
+Array.prototype.forEach.call(document.querySelectorAll('input[name="game"]'), function (r) {
+  r.addEventListener('change', function () {
+    if (!r.checked) return;
+    applyGame(r.value);
+    drawAll();
+  });
+});
+
+document.getElementById('draw').addEventListener('click', drawAll);
+document.getElementById('copy-all').addEventListener('click', function () {
+  var text = rows.map(function (r, i) { return LETTERS[i] + ' ' + fmt(r); }).join('\n');
+  copyText(text, '全 ' + rows.length + ' 口をコピーしました');
+});
+
+var checkedGame = document.querySelector('input[name="game"]:checked');
+applyGame(checkedGame ? checkedGame.value : '6');
+renderSeg();
+drawAll();
+</script>
+
+</body></html>
